@@ -1,0 +1,790 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GymTracker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+        
+        :root {
+            --navy-900: #0a0f1c;
+            --navy-800: #111827;
+            --navy-700: #1e293b;
+            --navy-600: #334155;
+            --steel-400: #475569;
+            --steel-300: #64748b;
+            --accent-blue: #3b82f6;
+            --accent-glow: rgba(59, 130, 246, 0.5);
+            --glass-bg: rgba(30, 41, 59, 0.6);
+            --glass-border: rgba(148, 163, 184, 0.1);
+        }
+
+        * {
+            font-family: 'Inter', sans-serif;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: linear-gradient(135deg, #0a0f1c 0%, #111827 50%, #0f172a 100%);
+            min-height: 100vh;
+            color: #e2e8f0;
+            overflow-x: hidden;
+        }
+
+        /* Noise texture overlay */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0.03;
+            z-index: -1;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+            pointer-events: none;
+        }
+
+        /* Glass morphism base */
+        .glass-panel {
+            background: var(--glass-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
+            box-shadow: 
+                0 8px 32px rgba(0, 0, 0, 0.4),
+                inset 0 1px 0 rgba(255, 255, 255, 0.05);
+        }
+
+        /* Skeuomorphic 3D button */
+        .btn-3d {
+            background: linear-gradient(180deg, #334155 0%, #1e293b 100%);
+            border: 1px solid #475569;
+            box-shadow: 
+                0 4px 6px rgba(0, 0, 0, 0.3),
+                0 1px 3px rgba(0, 0, 0, 0.2),
+                inset 0 1px 0 rgba(255, 255, 255, 0.1);
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-3d::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 50%;
+            background: linear-gradient(180deg, rgba(255,255,255,0.1) 0%, transparent 100%);
+            pointer-events: none;
+        }
+
+        .btn-3d:active {
+            transform: translateY(2px);
+            box-shadow: 
+                0 1px 2px rgba(0, 0, 0, 0.3),
+                inset 0 2px 4px rgba(0, 0, 0, 0.4);
+        }
+
+        .btn-3d.active {
+            background: linear-gradient(180deg, #2563eb 0%, #1d4ed8 100%);
+            border-color: #3b82f6;
+            box-shadow: 
+                0 0 20px rgba(59, 130, 246, 0.4),
+                inset 0 1px 0 rgba(255, 255, 255, 0.2);
+        }
+
+        /* Metallic accent button */
+        .btn-metal {
+            background: linear-gradient(135deg, #475569 0%, #334155 50%, #1e293b 100%);
+            border: 1px solid #64748b;
+            box-shadow: 
+                0 4px 6px rgba(0, 0, 0, 0.3),
+                inset 0 1px 0 rgba(255, 255, 255, 0.15);
+        }
+
+        .btn-metal:hover {
+            background: linear-gradient(135deg, #64748b 0%, #475569 50%, #334155 100%);
+        }
+
+        /* Calendar styling */
+        .calendar-day {
+            background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
+            border: 1px solid #334155;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            transition: all 0.2s ease;
+        }
+
+        .calendar-day:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+            border-color: #475569;
+        }
+
+        .calendar-day.active {
+            background: linear-gradient(180deg, #2563eb 0%, #1d4ed8 100%);
+            border-color: #60a5fa;
+            box-shadow: 0 0 15px rgba(37, 99, 235, 0.4);
+        }
+
+        /* Exercise block - glass with depth */
+        .exercise-card {
+            background: rgba(30, 41, 59, 0.5);
+            border: 1px solid rgba(71, 85, 105, 0.5);
+            box-shadow: 
+                0 4px 6px rgba(0, 0, 0, 0.2),
+                inset 0 1px 0 rgba(255, 255, 255, 0.05);
+        }
+
+        /* Input fields with inner glow */
+        .skeuo-input {
+            background: linear-gradient(180deg, #0f172a 0%, #1e293b 100%);
+            border: 1px solid #334155;
+            box-shadow: 
+                inset 0 2px 4px rgba(0, 0, 0, 0.4),
+                0 1px 0 rgba(255, 255, 255, 0.05);
+            color: #f1f5f9;
+            transition: all 0.3s ease;
+        }
+
+        .skeuo-input:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 
+                inset 0 2px 4px rgba(0, 0, 0, 0.4),
+                0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        /* Calorie display - LED style */
+        .stat-display {
+            background: linear-gradient(180deg, #0f172a 0%, #020617 100%);
+            border: 1px solid #1e293b;
+            box-shadow: 
+                inset 0 2px 4px rgba(0, 0, 0, 0.5),
+                0 1px 0 rgba(255, 255, 255, 0.05);
+        }
+
+        .stat-number {
+            text-shadow: 0 0 10px currentColor;
+            font-variant-numeric: tabular-nums;
+        }
+
+        /* Navigation tabs */
+        .nav-tab {
+            position: relative;
+            overflow: hidden;
+        }
+
+        .nav-tab::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, #3b82f6, transparent);
+            transform: scaleX(0);
+            transition: transform 0.3s ease;
+        }
+
+        .nav-tab.active::after {
+            transform: scaleX(1);
+        }
+
+        /* Scrollbar styling */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #475569;
+        }
+
+        /* Animations */
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .animate-slide-up {
+            animation: slideUp 0.4s ease-out forwards;
+        }
+
+        /* Toggle switch */
+        .toggle-checkbox:checked {
+            right: 0;
+            border-color: #3b82f6;
+        }
+
+        .toggle-checkbox:checked + .toggle-label {
+            background-color: #3b82f6;
+        }
+
+        /* Gradient text */
+        .gradient-text {
+            background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        /* Delete button */
+        .btn-delete {
+            color: #ef4444;
+            transition: all 0.2s ease;
+        }
+
+        .btn-delete:hover {
+            color: #dc2626;
+            transform: scale(1.1);
+            text-shadow: 0 0 8px rgba(239, 68, 68, 0.5);
+        }
+
+        /* Success save animation */
+        @keyframes savePulse {
+            0% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4); }
+            70% { box-shadow: 0 0 0 10px rgba(34, 197, 94, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
+        }
+
+        .save-success {
+            animation: savePulse 1s ease-out;
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+    <div class="container mx-auto max-w-4xl px-4 py-6 space-y-6">
+        
+        <!-- Header -->
+        <header class="glass-panel rounded-2xl p-6 flex items-center justify-between animate-slide-up">
+            <div>
+                <h1 class="text-2xl font-bold tracking-tight gradient-text flex items-center gap-2">
+                    <i data-lucide="dumbbell" class="w-8 h-8 text-blue-500"></i>
+                    GymTracker
+                </h1>
+                <p class="text-slate-400 text-sm mt-1">Looksmaxx them chuds twin</p>
+            </div>
+            <div class="text-right">
+                <div class="text-xs text-slate-400 uppercase tracking-wider">Today</div>
+                <div id="current-date" class="text-lg font-semibold text-slate-200"></div>
+            </div>
+        </header>
+
+        <!-- Calendar Section -->
+        <section class="glass-panel rounded-2xl p-6 animate-slide-up" style="animation-delay: 0.1s">
+            <div class="flex items-center justify-between mb-6">
+                <button onclick="changeMonth(-1)" class="btn-3d p-2 rounded-lg text-slate-300 hover:text-white">
+                    <i data-lucide="chevron-left" class="w-6 h-6"></i>
+                </button>
+                <h2 id="month-label" class="text-xl font-bold text-slate-200 tracking-wide uppercase"></h2>
+                <button onclick="changeMonth(1)" class="btn-3d p-2 rounded-lg text-slate-300 hover:text-white">
+                    <i data-lucide="chevron-right" class="w-6 h-6"></i>
+                </button>
+            </div>
+            
+            <div class="grid grid-cols-7 gap-2 mb-2">
+                <div class="text-center text-xs font-semibold text-slate-500 uppercase tracking-wider py-2">Mon</div>
+                <div class="text-center text-xs font-semibold text-slate-500 uppercase tracking-wider py-2">Tue</div>
+                <div class="text-center text-xs font-semibold text-slate-500 uppercase tracking-wider py-2">Wed</div>
+                <div class="text-center text-xs font-semibold text-slate-500 uppercase tracking-wider py-2">Thu</div>
+                <div class="text-center text-xs font-semibold text-slate-500 uppercase tracking-wider py-2">Fri</div>
+                <div class="text-center text-xs font-semibold text-slate-500 uppercase tracking-wider py-2">Sat</div>
+                <div class="text-center text-xs font-semibold text-slate-500 uppercase tracking-wider py-2">Sun</div>
+            </div>
+            
+            <div id="calendar-days" class="grid grid-cols-7 gap-2"></div>
+            
+            <div class="mt-4 text-center">
+                <span class="text-xs text-slate-400 uppercase tracking-wider">Tracking for</span>
+                <span id="selected-date-display" class="ml-2 text-sm font-semibold text-blue-400"></span>
+            </div>
+        </section>
+
+        <!-- Calorie Stats -->
+        <section class="grid grid-cols-3 gap-4 animate-slide-up" style="animation-delay: 0.2s">
+            <div class="stat-display rounded-xl p-4 text-center border border-slate-700/50">
+                <div class="text-xs text-slate-500 uppercase tracking-wider mb-1">Daily Goal</div>
+                <div class="stat-number text-2xl font-bold text-blue-400">2225</div>
+                <div class="text-xs text-slate-600 mt-1">kcal</div>
+            </div>
+            <div class="stat-display rounded-xl p-4 text-center border border-slate-700/50">
+                <div class="text-xs text-slate-500 uppercase tracking-wider mb-1">Consumed</div>
+                <div id="cals-eaten" class="stat-number text-2xl font-bold text-orange-400">0</div>
+                <div class="text-xs text-slate-600 mt-1">kcal</div>
+            </div>
+            <div class="stat-display rounded-xl p-4 text-center border border-slate-700/50 relative overflow-hidden">
+                <div class="absolute inset-0 bg-gradient-to-br from-green-500/10 to-emerald-500/10"></div>
+                <div class="relative">
+                    <div class="text-xs text-slate-500 uppercase tracking-wider mb-1">Remaining</div>
+                    <div id="cals-left" class="stat-number text-2xl font-bold text-green-400">2225</div>
+                    <div class="text-xs text-slate-600 mt-1">kcal</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Navigation -->
+        <nav class="glass-panel rounded-xl p-2 flex gap-2 animate-slide-up" style="animation-delay: 0.3s">
+            <button onclick="showTab('workout')" id="tab-workout" class="nav-tab btn-3d active flex-1 py-3 rounded-lg font-semibold text-sm flex items-center justify-center gap-2">
+                <i data-lucide="activity" class="w-4 h-4"></i>
+                Gym Log
+            </button>
+            <button onclick="showTab('nutrition')" id="tab-nutrition" class="nav-tab btn-3d flex-1 py-3 rounded-lg font-semibold text-sm flex items-center justify-center gap-2 text-slate-400">
+                <i data-lucide="utensils" class="w-4 h-4"></i>
+                Nutrition
+            </button>
+            <button onclick="showTab('history')" id="tab-history" class="nav-tab btn-3d flex-1 py-3 rounded-lg font-semibold text-sm flex items-center justify-center gap-2 text-slate-400">
+                <i data-lucide="database" class="w-4 h-4"></i>
+                Data
+            </button>
+        </nav>
+
+        <!-- Workout Tab -->
+        <div id="workout" class="tab-content active space-y-4 animate-slide-up" style="animation-delay: 0.4s">
+            <div class="glass-panel rounded-2xl p-6">
+                <div class="mb-6">
+                    <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Select Routine</label>
+                    <div class="relative">
+                        <select id="workout-type" onchange="loadRoutine()" class="skeuo-input w-full p-4 rounded-xl appearance-none cursor-pointer text-sm font-medium">
+                            <option value="upperA">Upper A — Chest/Back/Arms (2hr)</option>
+                            <option value="lowerA">Lower A — Quads/Calves Focus (2hr)</option>
+                            <option value="upperB">Upper B — Back/Shoulders (2hr)</option>
+                            <option value="lowerB">Lower B — Hams/Glutes/Abs (2hr)</option>
+                        </select>
+                        <i data-lucide="chevron-down" class="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500 pointer-events-none"></i>
+                    </div>
+                </div>
+
+                <div id="exercise-list" class="space-y-4"></div>
+
+                <button onclick="saveWorkout()" class="btn-metal w-full mt-6 py-4 rounded-xl font-bold text-white shadow-lg transform transition-all active:scale-95 flex items-center justify-center gap-2">
+                    <i data-lucide="save" class="w-5 h-5"></i>
+                    Save Session
+                </button>
+            </div>
+        </div>
+
+        <!-- Nutrition Tab -->
+        <div id="nutrition" class="tab-content hidden space-y-4 animate-slide-up" style="animation-delay: 0.4s">
+            <div class="glass-panel rounded-2xl p-6">
+                <h3 class="text-lg font-bold text-slate-200 mb-4 flex items-center gap-2">
+                    <i data-lucide="plus-circle" class="w-5 h-5 text-blue-500"></i>
+                    Add Meal
+                </h3>
+                
+                <div class="space-y-4 mb-6">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Food Item</label>
+                        <input type="text" id="food-name" placeholder="e.g., Grilled Chicken Breast" class="skeuo-input w-full p-4 rounded-xl text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Calories</label>
+                        <input type="number" id="food-cals" placeholder="0" class="skeuo-input w-full p-4 rounded-xl text-sm">
+                    </div>
+                </div>
+
+                <button onclick="addFood()" class="btn-3d w-full py-4 rounded-xl font-bold text-blue-400 border-blue-500/30 hover:bg-blue-500/10 transition-colors flex items-center justify-center gap-2">
+                    <i data-lucide="plus" class="w-5 h-5"></i>
+                    Add to Log
+                </button>
+
+                <div class="mt-8">
+                    <h4 class="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-4 border-b border-slate-700 pb-2">Today's Entries</h4>
+                    <div id="food-log-list" class="space-y-2"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- History Tab -->
+        <div id="history" class="tab-content hidden space-y-4 animate-slide-up" style="animation-delay: 0.4s">
+            <div class="glass-panel rounded-2xl p-6 space-y-4">
+                <h3 class="text-lg font-bold text-slate-200 mb-4 flex items-center gap-2">
+                    <i data-lucide="download" class="w-5 h-5 text-blue-500"></i>
+                    Data Management
+                </h3>
+                
+                <button onclick="exportCSV()" class="btn-3d w-full py-4 rounded-xl font-semibold text-slate-300 hover:text-white flex items-center justify-center gap-3 group">
+                    <i data-lucide="file-spreadsheet" class="w-5 h-5 group-hover:text-green-400 transition-colors"></i>
+                    Export CSV Data
+                </button>
+
+                <div class="h-px bg-gradient-to-r from-transparent via-slate-700 to-transparent my-4"></div>
+
+                <button onclick="clearData()" class="w-full py-4 rounded-xl font-semibold text-red-400 border border-red-500/20 bg-red-500/5 hover:bg-red-500/10 transition-colors flex items-center justify-center gap-3 group">
+                    <i data-lucide="trash-2" class="w-5 h-5 group-hover:scale-110 transition-transform"></i>
+                    Delete All History
+                </button>
+
+                <div class="mt-6 p-4 rounded-lg bg-slate-800/50 border border-slate-700/50">
+                    <div class="flex items-center gap-2 text-xs text-slate-500 mb-2">
+                        <i data-lucide="info" class="w-4 h-4"></i>
+                        <span>Storage Stats</span>
+                    </div>
+                    <div class="text-sm text-slate-400">
+                        <div class="flex justify-between mb-1">
+                            <span>Workout Entries:</span>
+                            <span id="stat-workouts" class="text-blue-400 font-mono">0</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>Meal Entries:</span>
+                            <span id="stat-meals" class="text-orange-400 font-mono">0</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // Constants
+        const BMR_GOAL = 2225;
+        const routines = {
+            upperA: ["Incline DB Press", "Flat Machine Press", "Pec Deck Fly", "Hammer Iso Row", "Lat Pulldown", "Lateral Raise", "Preacher Curl", "Tricep Pushdown", "Face Pulls"],
+            lowerA: ["Hack Squat", "Leg Extension", "Adductor Machine", "Seated Leg Curl", "Standing Calf Raise", "Seated Calf Raise", "Leg Press"],
+            upperB: ["T-Bar Row", "Single Arm Row", "Incline Bench Press", "Weighted Dips", "Lateral Raise", "Rear Delt Fly", "Hammer Curls", "Skullcrushers", "Cable Shrugs"],
+            lowerB: ["Stiff Leg Deadlift", "Lying Leg Curl", "Hip Thrust", "Walking Lunges", "Ab Wheel", "Hanging Leg Raises", "Calf Press"]
+        };
+
+        // State
+        let gymHistory = JSON.parse(localStorage.getItem('gymHistory')) || [];
+        let foodHistory = JSON.parse(localStorage.getItem('foodHistory')) || [];
+        let currentViewDate = new Date();
+        let selectedDateStr = new Date().toLocaleDateString();
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
+            initCalendar();
+            selectDate(selectedDateStr);
+            loadRoutine();
+            updateStats();
+            
+            // Set current date in header
+            const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            document.getElementById('current-date').textContent = new Date().toLocaleDateString('en-US', options);
+        });
+
+        function initCalendar() {
+            const year = currentViewDate.getFullYear();
+            const month = currentViewDate.getMonth();
+            
+            document.getElementById('month-label').innerText = new Intl.DateTimeFormat('en-US', { 
+                month: 'long', 
+                year: 'numeric' 
+            }).format(currentViewDate);
+
+            const firstDay = new Date(year, month, 1).getDay();
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            let startingSpace = firstDay === 0 ? 6 : firstDay - 1;
+
+            const grid = document.getElementById('calendar-days');
+            grid.innerHTML = '';
+
+            for (let i = 0; i < startingSpace; i++) {
+                grid.innerHTML += '<div class="h-12"></div>';
+            }
+
+            for (let d = 1; d <= daysInMonth; d++) {
+                const dateStr = new Date(year, month, d).toLocaleDateString();
+                const isActive = dateStr === selectedDateStr;
+                const hasData = gymHistory.some(h => h.date === dateStr) || foodHistory.some(f => f.date === dateStr);
+                
+                const indicator = hasData ? '<div class="absolute bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 bg-blue-500 rounded-full shadow-[0_0_8px_rgba(59,130,246,0.8)]"></div>' : '';
+                
+                grid.innerHTML += `
+                    <div class="calendar-day relative h-12 rounded-lg flex items-center justify-center cursor-pointer text-sm font-semibold ${isActive ? 'active text-white' : 'text-slate-400'}" 
+                         onclick="selectDate('${dateStr}')">
+                        ${d}
+                        ${indicator}
+                    </div>
+                `;
+            }
+        }
+
+        function selectDate(dateStr) {
+            selectedDateStr = dateStr;
+            document.getElementById('selected-date-display').innerText = dateStr;
+            initCalendar();
+            updateNutritionUI();
+            loadRoutine(); // Reload to show any saved data for this date
+        }
+
+        function changeMonth(dir) {
+            currentViewDate.setMonth(currentViewDate.getMonth() + dir);
+            initCalendar();
+        }
+
+        function showTab(id) {
+            // Hide all tabs
+            document.querySelectorAll('.tab-content').forEach(c => {
+                c.classList.add('hidden');
+                c.classList.remove('active');
+            });
+            
+            // Remove active from buttons
+            document.querySelectorAll('.nav-tab').forEach(b => {
+                b.classList.remove('active');
+                b.classList.add('text-slate-400');
+            });
+            
+            // Show selected
+            document.getElementById(id).classList.remove('hidden');
+            document.getElementById(id).classList.add('active');
+            
+            // Activate button
+            const btn = document.getElementById('tab-' + id);
+            btn.classList.add('active');
+            btn.classList.remove('text-slate-400');
+            
+            // Update stats if history tab
+            if (id === 'history') updateStats();
+        }
+
+        function loadRoutine() {
+            const type = document.getElementById('workout-type').value;
+            const list = document.getElementById('exercise-list');
+            list.innerHTML = '';
+
+            routines[type].forEach((ex, idx) => {
+                const searchUrl = `https://www.youtube.com/results?search_query=RP+Strength+${ex.replace(/ /g, '+')}`;
+                
+                // Check if we have saved data for this exercise on selected date
+                const savedSets = gymHistory.filter(h => h.date === selectedDateStr && h.ex === ex);
+                
+                const div = document.createElement('div');
+                div.className = 'exercise-card rounded-xl p-5 space-y-3';
+                div.innerHTML = `
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white font-bold text-sm shadow-lg shadow-blue-500/30">
+                                ${idx + 1}
+                            </div>
+                            <h4 class="font-bold text-slate-200 text-lg">${ex}</h4>
+                        </div>
+                        <a href="${searchUrl}" target="_blank" class="btn-3d px-3 py-2 rounded-lg text-xs font-medium text-blue-400 hover:text-blue-300 flex items-center gap-1">
+                            <i data-lucide="play-circle" class="w-4 h-4"></i>
+                            Guide
+                        </a>
+                    </div>
+                    
+                    <div class="grid grid-cols-12 gap-2 text-xs font-semibold text-slate-500 uppercase tracking-wider px-2">
+                        <div class="col-span-1 text-center">Set</div>
+                        <div class="col-span-3 text-center">Weight</div>
+                        <div class="col-span-3 text-center">Reps</div>
+                        <div class="col-span-3 text-center">RIR</div>
+                        <div class="col-span-2 text-center"></div>
+                    </div>
+                    
+                    <div class="sets-container space-y-2" id="sets-${idx}">
+                        ${savedSets.length > 0 ? 
+                            savedSets.map((set, i) => createSetRow(i + 1, set.kg, set.reps, set.rir)).join('') : 
+                            createSetRow(1)
+                        }
+                    </div>
+                    
+                    <button onclick="addSetRow(${idx})" class="btn-3d w-full py-2 rounded-lg text-xs font-semibold text-slate-400 hover:text-slate-200 flex items-center justify-center gap-1 mt-2">
+                        <i data-lucide="plus" class="w-4 h-4"></i>
+                        Add Set
+                    </button>
+                `;
+                list.appendChild(div);
+            });
+            
+            lucide.createIcons();
+        }
+
+        function createSetRow(num, kg = '', reps = '', rir = '') {
+            return `
+                <div class="set-row grid grid-cols-12 gap-2 items-center">
+                    <div class="col-span-1 text-center font-bold text-slate-500">${num}</div>
+                    <div class="col-span-3">
+                        <input type="number" class="skeuo-input w-full p-2 rounded-lg text-center text-sm font-medium" placeholder="kg" value="${kg}">
+                    </div>
+                    <div class="col-span-3">
+                        <input type="number" class="skeuo-input w-full p-2 rounded-lg text-center text-sm font-medium" placeholder="reps" value="${reps}">
+                    </div>
+                    <div class="col-span-3">
+                        <input type="number" class="skeuo-input w-full p-2 rounded-lg text-center text-sm font-medium" placeholder="RIR" value="${rir}">
+                    </div>
+                    <div class="col-span-2 flex justify-center">
+                        <button onclick="this.closest('.set-row').remove()" class="btn-delete p-1 rounded hover:bg-red-500/10">
+                            <i data-lucide="x" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function addSetRow(idx) {
+            const container = document.getElementById(`sets-${idx}`);
+            const setNum = container.children.length + 1;
+            const div = document.createElement('div');
+            div.innerHTML = createSetRow(setNum);
+            container.appendChild(div.firstElementChild);
+            lucide.createIcons();
+        }
+
+        function saveWorkout() {
+            // Remove existing entries for this date
+            gymHistory = gymHistory.filter(h => h.date !== selectedDateStr);
+            
+            document.querySelectorAll('.exercise-card').forEach(block => {
+                const exName = block.querySelector('h4').innerText;
+                
+                block.querySelectorAll('.set-row').forEach((row, i) => {
+                    const inputs = row.querySelectorAll('input');
+                    gymHistory.push({
+                        date: selectedDateStr,
+                        ex: exName,
+                        set: i + 1,
+                        kg: inputs[0].value || 0,
+                        reps: inputs[1].value || 0,
+                        rir: inputs[2].value || 0
+                    });
+                });
+            });
+            
+            localStorage.setItem('gymHistory', JSON.stringify(gymHistory));
+            
+            // Visual feedback
+            const btn = event.currentTarget;
+            btn.classList.add('save-success');
+            btn.innerHTML = '<i data-lucide="check-circle" class="w-5 h-5"></i> Saved Successfully';
+            setTimeout(() => {
+                btn.classList.remove('save-success');
+                btn.innerHTML = '<i data-lucide="save" class="w-5 h-5"></i> Save Session';
+                lucide.createIcons();
+                initCalendar(); // Update indicators
+                updateStats();
+            }, 1500);
+        }
+
+        function addFood() {
+            const name = document.getElementById('food-name').value.trim();
+            const cals = parseInt(document.getElementById('food-cals').value);
+            
+            if (name && cals) {
+                foodHistory.push({ date: selectedDateStr, name, cals });
+                localStorage.setItem('foodHistory', JSON.stringify(foodHistory));
+                
+                document.getElementById('food-name').value = '';
+                document.getElementById('food-cals').value = '';
+                
+                updateNutritionUI();
+                initCalendar(); // Update indicators
+                updateStats();
+                
+                // Animation feedback
+                const list = document.getElementById('food-log-list');
+                list.firstElementChild?.classList.add('animate-slide-up');
+            }
+        }
+
+        function updateNutritionUI() {
+            const todaysFood = foodHistory.filter(f => f.date === selectedDateStr);
+            const total = todaysFood.reduce((sum, f) => sum + f.cals, 0);
+            const left = BMR_GOAL - total;
+            
+            // Update numbers with color coding
+            document.getElementById('cals-eaten').innerText = total;
+            const leftEl = document.getElementById('cals-left');
+            leftEl.innerText = left;
+            
+            if (left < 0) {
+                leftEl.className = 'stat-number text-2xl font-bold text-red-500';
+                leftEl.style.textShadow = '0 0 10px rgba(239, 68, 68, 0.5)';
+            } else if (left < 300) {
+                leftEl.className = 'stat-number text-2xl font-bold text-yellow-400';
+                leftEl.style.textShadow = '0 0 10px rgba(250, 204, 21, 0.3)';
+            } else {
+                leftEl.className = 'stat-number text-2xl font-bold text-green-400';
+                leftEl.style.textShadow = '0 0 10px rgba(74, 222, 128, 0.3)';
+            }
+            
+            // Update list
+            const listEl = document.getElementById('food-log-list');
+            if (todaysFood.length === 0) {
+                listEl.innerHTML = '<div class="text-center py-8 text-slate-600 text-sm italic">No entries for this date</div>';
+            } else {
+                listEl.innerHTML = todaysFood.map((f, i) => `
+                    <div class="flex items-center justify-between p-3 rounded-lg bg-slate-800/50 border border-slate-700/30 hover:border-slate-600/50 transition-colors group" style="animation-delay: ${i * 0.05}s">
+                        <div class="flex items-center gap-3">
+                            <div class="w-2 h-2 rounded-full bg-orange-500 shadow-[0_0_8px_rgba(249,115,22,0.6)]"></div>
+                            <span class="text-slate-300 font-medium">${f.name}</span>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <span class="text-orange-400 font-bold font-mono">${f.cals} <span class="text-xs text-slate-500">kcal</span></span>
+                            <button onclick="deleteFood(${i})" class="btn-delete opacity-0 group-hover:opacity-100 transition-opacity">
+                                <i data-lucide="trash-2" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+                    </div>
+                `).join('');
+                lucide.createIcons();
+            }
+        }
+
+        function deleteFood(index) {
+            const todaysFood = foodHistory.filter(f => f.date === selectedDateStr);
+            const item = todaysFood[index];
+            const globalIndex = foodHistory.findIndex(f => f.date === selectedDateStr && f.name === item.name && f.cals === item.cals);
+            
+            if (globalIndex > -1) {
+                foodHistory.splice(globalIndex, 1);
+                localStorage.setItem('foodHistory', JSON.stringify(foodHistory));
+                updateNutritionUI();
+                initCalendar();
+                updateStats();
+            }
+        }
+
+        function updateStats() {
+            document.getElementById('stat-workouts').innerText = gymHistory.length;
+            document.getElementById('stat-meals').innerText = foodHistory.length;
+        }
+
+        function exportCSV() {
+            let csv = "Date,Exercise,Set,Kg,Reps,RIR\n";
+            gymHistory.forEach(h => {
+                csv += `${h.date},"${h.ex}",${h.set},${h.kg},${h.reps},${h.rir}\n`;
+            });
+            
+            csv += "\nDate,Food,Calories\n";
+            foodHistory.forEach(f => {
+                csv += `${f.date},"${f.name}",${f.cals}\n`;
+            });
+            
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `fitness_data_${new Date().toISOString().split('T')[0]}.csv`;
+            a.click();
+        }
+
+        function clearData() {
+            if (confirm("⚠️ WARNING: This will permanently delete ALL workout and nutrition history. This action cannot be undone.\n\nAre you sure you want to continue?")) {
+                localStorage.clear();
+                gymHistory = [];
+                foodHistory = [];
+                location.reload();
+            }
+        }
+    </script>
+</body>
+</html>
